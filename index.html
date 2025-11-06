@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Космический шлейф</title>
+    <title>Cosmic Trail | Космический шлейф | Traînée Cosmique</title>
     <style>
         body {
             margin: 0;
@@ -37,6 +37,7 @@
             border-radius: 15px;
             border: 1px solid #444;
             transition: opacity 0.5s ease;
+            max-width: 90%;
         }
         
         .info h2 {
@@ -61,13 +62,89 @@
 <body>
     <canvas id="canvas"></canvas>
     <div class="info" id="info">
-        <h2>✨ Космический шлейф ✨</h2>
-        <p>Двигайте курсором по экрану</p>
-        <p>чтобы создать свою галактику</p>
-        <p><small>Кликните или коснитесь экрана чтобы начать</small></p>
+        <h2 id="title">✨ Космический шлейф ✨</h2>
+        <p id="instruction1">Двигайте курсором по экрану</p>
+        <p id="instruction2">чтобы создать свою галактику</p>
+        <p id="hint"><small>Кликните или коснитесь экрана чтобы начать</small></p>
     </div>
 
     <script>
+        // Многоязычные тексты
+        const translations = {
+            ru: {
+                title: "✨ Космический шлейф ✨",
+                instruction1: "Двигайте курсором по экрану",
+                instruction2: "чтобы создать свою галактику",
+                hint: "Кликните или коснитесь экрана чтобы начать"
+            },
+            en: {
+                title: "✨ Cosmic Trail ✨",
+                instruction1: "Move your cursor across the screen",
+                instruction2: "to create your own galaxy",
+                hint: "Click or touch the screen to start"
+            },
+            fr: {
+                title: "✨ Traînée Cosmique ✨",
+                instruction1: "Déplacez votre curseur sur l'écran",
+                instruction2: "pour créer votre propre galaxie",
+                hint: "Cliquez ou touchez l'écran pour commencer"
+            }
+        };
+
+        // Функция определения языка
+        function detectLanguage() {
+            // 1. Проверяем параметр URL (приоритет самый высокий)
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlLang = urlParams.get('lang');
+            if (urlLang && translations[urlLang]) {
+                return urlLang;
+            }
+
+            // 2. Проверяем хэш URL
+            const hashLang = window.location.hash.substring(1);
+            if (hashLang && translations[hashLang]) {
+                return hashLang;
+            }
+
+            // 3. Проверяем localStorage
+            const savedLang = localStorage.getItem('cosmicTrail_language');
+            if (savedLang && translations[savedLang]) {
+                return savedLang;
+            }
+
+            // 4. Определяем язык браузера
+            const browserLang = navigator.language || navigator.userLanguage;
+            
+            if (browserLang.startsWith('ru')) {
+                return 'ru';
+            } else if (browserLang.startsWith('fr')) {
+                return 'fr';
+            } else {
+                return 'en'; // По умолчанию английский
+            }
+        }
+
+        // Функция установки языка
+        function setLanguage(lang) {
+            if (!translations[lang]) return;
+            
+            // Сохраняем в localStorage
+            localStorage.setItem('cosmicTrail_language', lang);
+            
+            // Обновляем тексты на странице
+            document.getElementById('title').textContent = translations[lang].title;
+            document.getElementById('instruction1').textContent = translations[lang].instruction1;
+            document.getElementById('instruction2').textContent = translations[lang].instruction2;
+            document.getElementById('hint').textContent = translations[lang].hint;
+            
+            // Обновляем язык документа
+            document.documentElement.lang = lang;
+        }
+
+        // Автоопределение языка при загрузке
+        const userLanguage = detectLanguage();
+        setLanguage(userLanguage);
+
         // Получаем canvas и context
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -254,6 +331,11 @@
                 );
             }
         }, 500);
+
+        // Для отладки: можно вручную сменить язык через консоль
+        window.setCosmicLanguage = function(lang) {
+            setLanguage(lang);
+        };
 
     </script>
 </body>
