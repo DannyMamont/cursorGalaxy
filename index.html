@@ -29,6 +29,7 @@
             justify-content: center;
             align-items: center;
             z-index: 2;
+            pointer-events: none; /* Важно! Позволяет событиям проходить сквозь */
         }
 
         .content {
@@ -39,6 +40,7 @@
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             max-width: 90%;
+            pointer-events: auto; /* Но сам контент должен быть кликабельным */
         }
 
         h1 {
@@ -84,6 +86,18 @@
             width: 100%;
             height: 100%;
             z-index: 1;
+            cursor: pointer;
+        }
+
+        .debug {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
         }
 
         @media (max-width: 768px) {
@@ -107,7 +121,6 @@
             }
         }
 
-        /* Анимация пульсации для привлечения внимания */
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -136,14 +149,16 @@
         </div>
     </div>
 
+    <!-- <div class="debug" id="debugInfo">Частиц: 0</div> -->
+
     <script>
         class GalaxyParticle {
             constructor(x, y) {
                 this.x = x;
                 this.y = y;
                 this.size = Math.random() * 3 + 1;
-                this.speedX = (Math.random() - 0.5) * 2;
-                this.speedY = (Math.random() - 0.5) * 2;
+                this.speedX = (Math.random() - 0.5) * 4;
+                this.speedY = (Math.random() - 0.5) * 4;
                 this.color = this.getRandomColor();
                 this.life = 1.0;
                 this.decay = Math.random() * 0.02 + 0.005;
@@ -164,8 +179,8 @@
                 this.life -= this.decay;
                 
                 // Замедление частиц
-                this.speedX *= 0.99;
-                this.speedY *= 0.99;
+                this.speedX *= 0.98;
+                this.speedY *= 0.98;
                 
                 // Гравитация к центру
                 const centerX = canvas.width / 2;
@@ -175,7 +190,7 @@
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
                 if (distance > 0) {
-                    const force = 0.0001;
+                    const force = 0.0002;
                     this.speedX += dx * force;
                     this.speedY += dy * force;
                 }
@@ -185,13 +200,13 @@
                 ctx.save();
                 ctx.globalAlpha = this.life;
                 ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
                 
                 // Свечение
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = this.color;
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.restore();
             }
@@ -210,6 +225,7 @@
                 this.mouseY = 0;
                 this.isMouseDown = false;
                 this.lastTouchTime = 0;
+                this.debugElement = document.getElementById('debugInfo');
                 
                 this.init();
                 this.setupEventListeners();
@@ -219,6 +235,18 @@
             init() {
                 this.resizeCanvas();
                 window.addEventListener('resize', () => this.resizeCanvas());
+                
+                // Создаем начальные частицы для демонстрации
+                this.createInitialParticles();
+            }
+
+            createInitialParticles() {
+                // Создаем несколько начальных частиц для демонстрации
+                for (let i = 0; i < 50; i++) {
+                    const x = Math.random() * this.canvas.width;
+                    const y = Math.random() * this.canvas.height;
+                    this.particles.push(new GalaxyParticle(x, y));
+                }
             }
 
             resizeCanvas() {
@@ -227,49 +255,57 @@
             }
 
             setupEventListeners() {
-                // Мышь
-                this.canvas.addEventListener('mousemove', (e) => {
+                // Вешаем события на ВЕСЬ документ, а не только на canvas
+                document.addEventListener('mousemove', (e) => {
                     this.mouseX = e.clientX;
                     this.mouseY = e.clientY;
-                    this.createParticles(e.clientX, e.clientY, 3);
+                    this.createParticles(e.clientX, e.clientY, 5);
                 });
 
-                this.canvas.addEventListener('mousedown', () => {
+                document.addEventListener('mousedown', () => {
                     this.isMouseDown = true;
                 });
 
-                this.canvas.addEventListener('mouseup', () => {
+                document.addEventListener('mouseup', () => {
                     this.isMouseDown = false;
                 });
 
-                // Сенсорные события
-                this.canvas.addEventListener('touchmove', (e) => {
+                // События для всего документа
+                document.addEventListener('touchmove', (e) => {
                     e.preventDefault();
                     const touch = e.touches[0];
                     this.mouseX = touch.clientX;
                     this.mouseY = touch.clientY;
                     
                     const currentTime = Date.now();
-                    if (currentTime - this.lastTouchTime > 16) { // ~60fps
-                        this.createParticles(touch.clientX, touch.clientY, 5);
+                    if (currentTime - this.lastTouchTime > 16) {
+                        this.createParticles(touch.clientX, touch.clientY, 8);
                         this.lastTouchTime = currentTime;
                     }
                 }, { passive: false });
 
-                this.canvas.addEventListener('touchstart', (e) => {
+                document.addEventListener('touchstart', (e) => {
                     this.isMouseDown = true;
+                    const touch = e.touches[0];
+                    this.createParticles(touch.clientX, touch.clientY, 10);
                 });
 
-                this.canvas.addEventListener('touchend', () => {
+                document.addEventListener('touchend', () => {
                     this.isMouseDown = false;
+                });
+
+                // Также вешаем события на сам canvas для надежности
+                this.canvas.addEventListener('mousemove', (e) => {
+                    this.mouseX = e.clientX;
+                    this.mouseY = e.clientY;
+                    this.createParticles(e.clientX, e.clientY, 5);
                 });
             }
 
             createParticles(x, y, count) {
                 for (let i = 0; i < count; i++) {
-                    // Случайное смещение для создания более органичного шлейфа
-                    const offsetX = (Math.random() - 0.5) * 20;
-                    const offsetY = (Math.random() - 0.5) * 20;
+                    const offsetX = (Math.random() - 0.5) * 30;
+                    const offsetY = (Math.random() - 0.5) * 30;
                     
                     this.particles.push(
                         new GalaxyParticle(x + offsetX, y + offsetY)
@@ -277,8 +313,8 @@
                 }
                 
                 // Ограничение количества частиц для производительности
-                if (this.particles.length > 1500) {
-                    this.particles = this.particles.slice(-1000);
+                if (this.particles.length > 2000) {
+                    this.particles = this.particles.slice(-1500);
                 }
             }
 
@@ -286,7 +322,7 @@
                 requestAnimationFrame(() => this.animate());
                 
                 // Полупрозрачный фон для эффекта шлейфа
-                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 
                 // Обновление и отрисовка частиц
@@ -299,12 +335,18 @@
                         this.particles.splice(i, 1);
                     }
                 }
+
+                // Обновление debug информации
+                if (this.debugElement) {
+                    this.debugElement.textContent = `Частиц: ${this.particles.length}`;
+                }
             }
         }
 
         // Инициализация эффекта после загрузки страницы
         window.addEventListener('load', () => {
             new GalaxyEffect();
+            console.log('GalaxyEffect инициализирован! Двигайте курсором по экрану.');
         });
 
         // Предотвращение скролла на мобильных устройствах
