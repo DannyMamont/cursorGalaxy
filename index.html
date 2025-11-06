@@ -21,6 +21,7 @@
             width: 100vw;
             height: 100vh;
             z-index: 1;
+            cursor: pointer;
         }
         
         .info {
@@ -32,50 +33,53 @@
             text-align: center;
             z-index: 2;
             background: rgba(0,0,0,0.8);
-            padding: 20px;
-            border-radius: 10px;
+            padding: 30px;
+            border-radius: 15px;
             border: 1px solid #444;
+            transition: opacity 0.5s ease;
         }
         
-        .debug {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            color: #0f0;
-            z-index: 3;
-            font-size: 12px;
+        .info h2 {
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .info p {
+            margin: 10px 0;
+            color: #ccc;
+        }
+        
+        .info.hidden {
+            opacity: 0;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
     <canvas id="canvas"></canvas>
-    <div class="info">
+    <div class="info" id="info">
         <h2>✨ Космический шлейф ✨</h2>
         <p>Двигайте курсором по экрану</p>
-        <p><small>Частицы появятся здесь</small></p>
+        <p>чтобы создать свою галактику</p>
+        <p><small>Кликните или коснитесь экрана чтобы начать</small></p>
     </div>
-    <div class="debug" id="debug">Статус: Загрузка...</div>
 
     <script>
-        // Простой дебаг вывод
-        function debug(msg) {
-            document.getElementById('debug').textContent = 'Статус: ' + msg;
-            console.log(msg);
-        }
-
-        debug('Начало инициализации');
-        
         // Получаем canvas и context
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        const infoElement = document.getElementById('info');
         
-        debug('Canvas получен');
+        // Флаг первого клика
+        let firstClick = false;
         
         // Устанавливаем размеры
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            debug('Размер canvas: ' + canvas.width + 'x' + canvas.height);
         }
         
         resizeCanvas();
@@ -100,30 +104,43 @@
             }
             
             getRandomColor() {
-                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'];
+                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff'];
                 return colors[Math.floor(Math.random() * colors.length)];
             }
             
             update() {
                 this.x += this.speedX;
                 this.y += this.speedY;
-                this.life -= 0.01;
+                this.life -= 0.008;
                 this.alpha = this.life;
-                this.speedX *= 0.98;
-                this.speedY *= 0.98;
+                this.speedX *= 0.99;
+                this.speedY *= 0.99;
+                
+                // Гравитация к центру для спирального эффекта
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const dx = centerX - this.x;
+                const dy = centerY - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 0) {
+                    const force = 0.0001;
+                    this.speedX += dx * force;
+                    this.speedY += dy * force;
+                }
             }
             
             draw() {
                 ctx.save();
                 ctx.globalAlpha = this.alpha;
                 ctx.fillStyle = this.color;
+                
+                // Свечение
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = this.color;
+                
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                // Добавляем свечение
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = this.color;
                 ctx.fill();
                 ctx.restore();
             }
@@ -137,21 +154,34 @@
         function createParticles(x, y, count = 5) {
             for (let i = 0; i < count; i++) {
                 particles.push(new Particle(
-                    x + (Math.random() - 0.5) * 30,
-                    y + (Math.random() - 0.5) * 30
+                    x + (Math.random() - 0.5) * 40,
+                    y + (Math.random() - 0.5) * 40
                 ));
+            }
+        }
+        
+        // Скрытие текста при первом клике
+        function hideInfo() {
+            if (!firstClick) {
+                firstClick = true;
+                infoElement.classList.add('hidden');
+                
+                // Создаем взрыв частиц в центре при первом клике
+                for (let i = 0; i < 50; i++) {
+                    createParticles(canvas.width / 2, canvas.height / 2, 1);
+                }
             }
         }
         
         // Основной цикл анимации
         function animate() {
             // Очистка с небольшим затемнением для эффекта шлейфа
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             // Создаем частицы на позиции мыши
             if (mouseX !== null && mouseY !== null) {
-                createParticles(mouseX, mouseY, 3);
+                createParticles(mouseX, mouseY, 4);
             }
             
             // Обновляем и рисуем все частицы
@@ -165,11 +195,6 @@
                 }
             }
             
-            // Обновляем debug информацию
-            debug('Частиц: ' + particles.length + ' | Мышь: ' + 
-                  (mouseX ? Math.round(mouseX) : 'null') + ',' + 
-                  (mouseY ? Math.round(mouseY) : 'null'));
-            
             requestAnimationFrame(animate);
         }
         
@@ -179,12 +204,28 @@
             mouseY = e.clientY;
         });
         
+        canvas.addEventListener('mousedown', (e) => {
+            hideInfo();
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            createParticles(mouseX, mouseY, 10);
+        });
+        
         canvas.addEventListener('mouseleave', () => {
             mouseX = null;
             mouseY = null;
         });
         
         // Обработчики событий касания
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            hideInfo();
+            const touch = e.touches[0];
+            mouseX = touch.clientX;
+            mouseY = touch.clientY;
+            createParticles(mouseX, mouseY, 15);
+        }, { passive: false });
+        
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             const touch = e.touches[0];
@@ -197,23 +238,22 @@
             mouseY = null;
         });
         
+        // Также скрываем по клику на самом тексте
+        infoElement.addEventListener('click', hideInfo);
+        
         // Запускаем анимацию
-        debug('Запуск анимации...');
         animate();
         
-        // Создаем тестовые частицы через секунду
+        // Создаем несколько начальных частиц для красоты
         setTimeout(() => {
-            createParticles(canvas.width / 2, canvas.height / 2, 20);
-            debug('Тестовые частицы созданы');
-        }, 1000);
-        
-        // Скрываем информационное сообщение через 3 секунды
-        setTimeout(() => {
-            document.querySelector('.info').style.opacity = '0';
-            setTimeout(() => {
-                document.querySelector('.info').style.display = 'none';
-            }, 1000);
-        }, 3000);
+            for (let i = 0; i < 30; i++) {
+                createParticles(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    1
+                );
+            }
+        }, 500);
 
     </script>
 </body>
