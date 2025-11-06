@@ -1,62 +1,220 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Тест частиц</title>
-    <style>body{margin:0;overflow:hidden;}</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Космический шлейф</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        
+        #canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        
+        .info {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            z-index: 2;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        
+        .debug {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: #0f0;
+            z-index: 3;
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
-    <canvas id="c"></canvas>
+    <canvas id="canvas"></canvas>
+    <div class="info">
+        <h2>✨ Космический шлейф ✨</h2>
+        <p>Двигайте курсором по экрану</p>
+        <p><small>Частицы появятся здесь</small></p>
+    </div>
+    <div class="debug" id="debug">Статус: Загрузка...</div>
+
     <script>
-        const c = document.getElementById('c');
-        const ctx = c.getContext('2d');
-        c.width = window.innerWidth;
-        c.height = window.innerHeight;
+        // Простой дебаг вывод
+        function debug(msg) {
+            document.getElementById('debug').textContent = 'Статус: ' + msg;
+            console.log(msg);
+        }
+
+        debug('Начало инициализации');
         
-        let parts = [];
-        let mouse = {x:0,y:0};
+        // Получаем canvas и context
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
         
-        c.addEventListener('mousemove', e => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-            for(let i=0;i<5;i++){
-                parts.push({
-                    x: e.clientX,
-                    y: e.clientY,
-                    size: Math.random()*5+2,
-                    speedX: Math.random()*6-3,
-                    speedY: Math.random()*6-3,
-                    color: `rgb(${Math.random()*255},${Math.random()*255},${Math.random()*255})`,
-                    life: 1
-                });
+        debug('Canvas получен');
+        
+        // Устанавливаем размеры
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            debug('Размер canvas: ' + canvas.width + 'x' + canvas.height);
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Массив частиц
+        const particles = [];
+        let mouseX = null;
+        let mouseY = null;
+        
+        // Класс частицы
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 4 + 2;
+                this.speedX = (Math.random() - 0.5) * 4;
+                this.speedY = (Math.random() - 0.5) * 4;
+                this.color = this.getRandomColor();
+                this.alpha = 1;
+                this.life = 1;
             }
-        });
-        
-        function animate(){
-            ctx.fillStyle = 'rgba(0,0,0,0.1)';
-            ctx.fillRect(0,0,c.width,c.height);
             
-            for(let i=0;i<parts.length;i++){
-                let p = parts[i];
-                p.x += p.speedX;
-                p.y += p.speedY;
-                p.life -= 0.01;
-                
-                ctx.fillStyle = p.color;
-                ctx.globalAlpha = p.life;
+            getRandomColor() {
+                const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life -= 0.01;
+                this.alpha = this.life;
+                this.speedX *= 0.98;
+                this.speedY *= 0.98;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
                 
-                if(p.life <= 0){
-                    parts.splice(i,1);
-                    i--;
+                // Добавляем свечение
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+            
+            isDead() {
+                return this.life <= 0;
+            }
+        }
+        
+        // Создание частиц
+        function createParticles(x, y, count = 5) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(
+                    x + (Math.random() - 0.5) * 30,
+                    y + (Math.random() - 0.5) * 30
+                ));
+            }
+        }
+        
+        // Основной цикл анимации
+        function animate() {
+            // Очистка с небольшим затемнением для эффекта шлейфа
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Создаем частицы на позиции мыши
+            if (mouseX !== null && mouseY !== null) {
+                createParticles(mouseX, mouseY, 3);
+            }
+            
+            // Обновляем и рисуем все частицы
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                particle.update();
+                particle.draw();
+                
+                if (particle.isDead()) {
+                    particles.splice(i, 1);
                 }
             }
-            ctx.globalAlpha = 1;
+            
+            // Обновляем debug информацию
+            debug('Частиц: ' + particles.length + ' | Мышь: ' + 
+                  (mouseX ? Math.round(mouseX) : 'null') + ',' + 
+                  (mouseY ? Math.round(mouseY) : 'null'));
+            
             requestAnimationFrame(animate);
         }
+        
+        // Обработчики событий мыши
+        canvas.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            mouseX = null;
+            mouseY = null;
+        });
+        
+        // Обработчики событий касания
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            mouseX = touch.clientX;
+            mouseY = touch.clientY;
+        }, { passive: false });
+        
+        canvas.addEventListener('touchend', () => {
+            mouseX = null;
+            mouseY = null;
+        });
+        
+        // Запускаем анимацию
+        debug('Запуск анимации...');
         animate();
-        console.log('Двигайте мышкой!');
+        
+        // Создаем тестовые частицы через секунду
+        setTimeout(() => {
+            createParticles(canvas.width / 2, canvas.height / 2, 20);
+            debug('Тестовые частицы созданы');
+        }, 1000);
+        
+        // Скрываем информационное сообщение через 3 секунды
+        setTimeout(() => {
+            document.querySelector('.info').style.opacity = '0';
+            setTimeout(() => {
+                document.querySelector('.info').style.display = 'none';
+            }, 1000);
+        }, 3000);
+
     </script>
 </body>
 </html>
