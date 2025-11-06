@@ -1,360 +1,62 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Космический шлейф | Портфолио</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: #000;
-            color: #fff;
-            font-family: 'Arial', sans-serif;
-            overflow: hidden;
-            height: 100vh;
-            touch-action: none;
-        }
-
-        .container {
-            position: relative;
-            width: 100%;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 2;
-            pointer-events: none; /* Важно! Позволяет событиям проходить сквозь */
-        }
-
-        .content {
-            text-align: center;
-            padding: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            max-width: 90%;
-            pointer-events: auto; /* Но сам контент должен быть кликабельным */
-        }
-
-        h1 {
-            font-size: clamp(24px, 5vw, 48px);
-            margin-bottom: 20px;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        p {
-            font-size: clamp(14px, 3vw, 18px);
-            line-height: 1.6;
-            margin-bottom: 15px;
-            color: #ccc;
-        }
-
-        .instructions {
-            font-size: clamp(12px, 2.5vw, 14px);
-            color: #888;
-            margin-top: 20px;
-        }
-
-        .mobile-warning {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-            color: white;
-            padding: 10px;
-            text-align: center;
-            z-index: 1000;
-            font-size: 14px;
-        }
-
-        canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            cursor: pointer;
-        }
-
-        .debug {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.8);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            z-index: 1000;
-        }
-
-        @media (max-width: 768px) {
-            .content {
-                padding: 15px;
-                max-width: 95%;
-            }
-            
-            .mobile-warning {
-                display: block;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .content {
-                padding: 10px;
-            }
-            
-            h1 {
-                margin-bottom: 15px;
-            }
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .content {
-            animation: pulse 4s ease-in-out infinite;
-        }
-    </style>
+    <title>Тест частиц</title>
+    <style>body{margin:0;overflow:hidden;}</style>
 </head>
 <body>
-    <div class="mobile-warning">
-        💫 Двигайте пальцем по экрану для создания галактики!
-    </div>
-
-    <canvas id="galaxyCanvas"></canvas>
-    
-    <div class="container">
-        <div class="content">
-            <h1>Космический шлейф</h1>
-            <p>Двигайте курсором или пальцем по экрану, чтобы создать свою собственную галактику</p>
-            <p>Частицы будут формировать спиральные рукава, подобные настоящим галактикам</p>
-            <div class="instructions">
-                💡 Совет: Попробуйте делать круговые движения для создания спиралей
-            </div>
-        </div>
-    </div>
-
-    <!-- <div class="debug" id="debugInfo">Частиц: 0</div> -->
-
+    <canvas id="c"></canvas>
     <script>
-        class GalaxyParticle {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.size = Math.random() * 3 + 1;
-                this.speedX = (Math.random() - 0.5) * 4;
-                this.speedY = (Math.random() - 0.5) * 4;
-                this.color = this.getRandomColor();
-                this.life = 1.0;
-                this.decay = Math.random() * 0.02 + 0.005;
-            }
-
-            getRandomColor() {
-                const colors = [
-                    '#4ecdc4', '#45b7d1', '#ff6b6b', 
-                    '#96ceb4', '#feca57', '#ff9ff3',
-                    '#54a0ff', '#5f27cd', '#00d2d3'
-                ];
-                return colors[Math.floor(Math.random() * colors.length)];
-            }
-
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                this.life -= this.decay;
-                
-                // Замедление частиц
-                this.speedX *= 0.98;
-                this.speedY *= 0.98;
-                
-                // Гравитация к центру
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
-                const dx = centerX - this.x;
-                const dy = centerY - this.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance > 0) {
-                    const force = 0.0002;
-                    this.speedX += dx * force;
-                    this.speedY += dy * force;
-                }
-            }
-
-            draw(ctx) {
-                ctx.save();
-                ctx.globalAlpha = this.life;
-                ctx.fillStyle = this.color;
-                
-                // Свечение
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = this.color;
-                
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            }
-
-            isDead() {
-                return this.life <= 0;
-            }
-        }
-
-        class GalaxyEffect {
-            constructor() {
-                this.canvas = document.getElementById('galaxyCanvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.particles = [];
-                this.mouseX = 0;
-                this.mouseY = 0;
-                this.isMouseDown = false;
-                this.lastTouchTime = 0;
-                this.debugElement = document.getElementById('debugInfo');
-                
-                this.init();
-                this.setupEventListeners();
-                this.animate();
-            }
-
-            init() {
-                this.resizeCanvas();
-                window.addEventListener('resize', () => this.resizeCanvas());
-                
-                // Создаем начальные частицы для демонстрации
-                this.createInitialParticles();
-            }
-
-            createInitialParticles() {
-                // Создаем несколько начальных частиц для демонстрации
-                for (let i = 0; i < 50; i++) {
-                    const x = Math.random() * this.canvas.width;
-                    const y = Math.random() * this.canvas.height;
-                    this.particles.push(new GalaxyParticle(x, y));
-                }
-            }
-
-            resizeCanvas() {
-                this.canvas.width = window.innerWidth;
-                this.canvas.height = window.innerHeight;
-            }
-
-            setupEventListeners() {
-                // Вешаем события на ВЕСЬ документ, а не только на canvas
-                document.addEventListener('mousemove', (e) => {
-                    this.mouseX = e.clientX;
-                    this.mouseY = e.clientY;
-                    this.createParticles(e.clientX, e.clientY, 5);
-                });
-
-                document.addEventListener('mousedown', () => {
-                    this.isMouseDown = true;
-                });
-
-                document.addEventListener('mouseup', () => {
-                    this.isMouseDown = false;
-                });
-
-                // События для всего документа
-                document.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    const touch = e.touches[0];
-                    this.mouseX = touch.clientX;
-                    this.mouseY = touch.clientY;
-                    
-                    const currentTime = Date.now();
-                    if (currentTime - this.lastTouchTime > 16) {
-                        this.createParticles(touch.clientX, touch.clientY, 8);
-                        this.lastTouchTime = currentTime;
-                    }
-                }, { passive: false });
-
-                document.addEventListener('touchstart', (e) => {
-                    this.isMouseDown = true;
-                    const touch = e.touches[0];
-                    this.createParticles(touch.clientX, touch.clientY, 10);
-                });
-
-                document.addEventListener('touchend', () => {
-                    this.isMouseDown = false;
-                });
-
-                // Также вешаем события на сам canvas для надежности
-                this.canvas.addEventListener('mousemove', (e) => {
-                    this.mouseX = e.clientX;
-                    this.mouseY = e.clientY;
-                    this.createParticles(e.clientX, e.clientY, 5);
+        const c = document.getElementById('c');
+        const ctx = c.getContext('2d');
+        c.width = window.innerWidth;
+        c.height = window.innerHeight;
+        
+        let parts = [];
+        let mouse = {x:0,y:0};
+        
+        c.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+            for(let i=0;i<5;i++){
+                parts.push({
+                    x: e.clientX,
+                    y: e.clientY,
+                    size: Math.random()*5+2,
+                    speedX: Math.random()*6-3,
+                    speedY: Math.random()*6-3,
+                    color: `rgb(${Math.random()*255},${Math.random()*255},${Math.random()*255})`,
+                    life: 1
                 });
             }
-
-            createParticles(x, y, count) {
-                for (let i = 0; i < count; i++) {
-                    const offsetX = (Math.random() - 0.5) * 30;
-                    const offsetY = (Math.random() - 0.5) * 30;
-                    
-                    this.particles.push(
-                        new GalaxyParticle(x + offsetX, y + offsetY)
-                    );
-                }
-                
-                // Ограничение количества частиц для производительности
-                if (this.particles.length > 2000) {
-                    this.particles = this.particles.slice(-1500);
-                }
-            }
-
-            animate() {
-                requestAnimationFrame(() => this.animate());
-                
-                // Полупрозрачный фон для эффекта шлейфа
-                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-                
-                // Обновление и отрисовка частиц
-                for (let i = this.particles.length - 1; i >= 0; i--) {
-                    const particle = this.particles[i];
-                    particle.update();
-                    particle.draw(this.ctx);
-                    
-                    if (particle.isDead()) {
-                        this.particles.splice(i, 1);
-                    }
-                }
-
-                // Обновление debug информации
-                if (this.debugElement) {
-                    this.debugElement.textContent = `Частиц: ${this.particles.length}`;
-                }
-            }
-        }
-
-        // Инициализация эффекта после загрузки страницы
-        window.addEventListener('load', () => {
-            new GalaxyEffect();
-            console.log('GalaxyEffect инициализирован! Двигайте курсором по экрану.');
         });
-
-        // Предотвращение скролла на мобильных устройствах
-        document.addEventListener('touchmove', (e) => {
-            if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
-                e.preventDefault();
+        
+        function animate(){
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(0,0,c.width,c.height);
+            
+            for(let i=0;i<parts.length;i++){
+                let p = parts[i];
+                p.x += p.speedX;
+                p.y += p.speedY;
+                p.life -= 0.01;
+                
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+                
+                if(p.life <= 0){
+                    parts.splice(i,1);
+                    i--;
+                }
             }
-        }, { passive: false });
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(animate);
+        }
+        animate();
+        console.log('Двигайте мышкой!');
     </script>
 </body>
 </html>
